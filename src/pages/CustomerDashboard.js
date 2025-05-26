@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-
+import Image from 'next/image';
 export default function CustomerDashboard() {
   const [buyer, setBuyer] = useState('');
   const [uuid, setUuid] = useState('');
@@ -89,10 +89,10 @@ export default function CustomerDashboard() {
     <div style={styles.dashboardContainer}>
       <div style={styles.header}>
         <div style={styles.logoContainer}>
-          <img src="/path-to-logo.png" alt="Company Logo" style={styles.logo} />
+          <Image src="/path-to-logo.png" alt="Company Logo" style={styles.logo} />
         </div>
         <div style={styles.profileContainer}>
-          <img src="/path-to-profile-icon.png" alt="Profile" style={styles.profileIcon} />
+          <Image src="/path-to-profile-icon.png" alt="Profile" style={styles.profileIcon} />
         </div>
       </div>
 

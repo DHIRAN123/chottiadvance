@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export', // Enable static HTML export
+  images: {
+    unoptimized: true, // Disable Next.js image optimization for static exports
+  },
+  trailingSlash: true, // Ensure trailing slashes for routes
+
   webpack(config) {
     // Grab the existing rule that handles SVG imports
     const fileLoaderRule = config.module.rules.find((rule) =>
@@ -7,7 +13,7 @@ const nextConfig = {
     );
 
     config.module.rules.push(
-      // Reapply the existing rule, but only for svg imports ending in ?url
+      // Reapply the existing rule, but only for SVG imports ending in ?url
       {
         ...fileLoaderRule,
         test: /\.svg$/i,
@@ -17,8 +23,8 @@ const nextConfig = {
       {
         test: /\.svg$/i,
         issuer: fileLoaderRule.issuer,
-        resourceQuery: { not: [...fileLoaderRule.resourceQuery.not, /url/] }, // exclude if *.svg?url
-        use: ["@svgr/webpack"],
+        resourceQuery: { not: [...(fileLoaderRule.resourceQuery?.not || []), /url/] }, // Exclude if *.svg?url
+        use: ["@svgr/webpack"], // Use @svgr/webpack for SVG as React components
       }
     );
 
@@ -27,8 +33,6 @@ const nextConfig = {
 
     return config;
   },
-
-  // ...other config
 };
 
 export default nextConfig;

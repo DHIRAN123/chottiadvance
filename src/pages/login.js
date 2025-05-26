@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import './login.css';
+
 export default function LoginPage() {
   const [loginType, setLoginType] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -11,23 +12,29 @@ export default function LoginPage() {
   const [mobileFromApi, setMobileFromApi] = useState('');
   const router = useRouter();
 
+  // Handle login type selection
   const handleLoginClick = (type) => {
     setLoginType(type);
+    setOtpSent(false);
   };
 
+  // Send OTP function
   const handleSendOtp = async (e) => {
     e.preventDefault();
     if (!loginType) {
       alert('Please select a login type.');
       return;
     }
+    if (!phoneNumber) {
+      alert('Please enter your phone number.');
+      return;
+    }
     try {
       const response = await fetch(
-        `http://localhost:8082/sendOtp?mobileNumber=${phoneNumber}`,
-        {
-          method: 'GET',
-        }
+        `http://localhost:8082/sendOtp?mobileNumber=${encodeURIComponent(phoneNumber)}&loginType=${encodeURIComponent(loginType)}`,
+        { method: 'GET' }
       );
+      console.log("Sending OTP with loginType:", loginType);
       if (response.ok) {
         const data = await response.json();
         setMobileFromApi(data.mobileNumber || phoneNumber);
@@ -43,6 +50,7 @@ export default function LoginPage() {
     }
   };
 
+  // Verify OTP function
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (!otp) {
@@ -51,10 +59,8 @@ export default function LoginPage() {
     }
     try {
       const response = await fetch(
-        `http://localhost:8082/verifyOtp?mobileNumber=${mobileFromApi}&otp=${otp}`,
-        {
-          method: 'POST',
-        }
+        `http://localhost:8082/verifyOtp?mobileNumber=${encodeURIComponent(mobileFromApi)}&otp=${encodeURIComponent(otp)}`,
+        { method: 'POST' }
       );
       if (response.ok) {
         const data = await response.json();
@@ -77,16 +83,12 @@ export default function LoginPage() {
     <>
       <Head>
         <title>Login Page</title>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
-          rel="stylesheet"
-        />
       </Head>
       <div className="box">
         <span className="borderLine"></span>
         <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp}>
           <h2>Login</h2>
-          <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column' }}>
+          <div className="button-group">
             <button
               type="button"
               className={loginType === 'NBFC' ? 'selectedButton' : ''}
@@ -115,7 +117,6 @@ export default function LoginPage() {
                   disabled={otpSent}
                 />
                 <span>Phone Number</span>
-                <i></i>
               </div>
               {otpSent && (
                 <div className="inputBox">
@@ -128,7 +129,6 @@ export default function LoginPage() {
                     required
                   />
                   <span>OTP</span>
-                  <i></i>
                 </div>
               )}
               <input type="submit" id="submit" value={otpSent ? 'Verify OTP' : 'Send OTP'} />
@@ -136,9 +136,6 @@ export default function LoginPage() {
           )}
         </form>
       </div>
-      <style jsx>{`
-        /* Insert the CSS styles provided earlier here */
-      `}</style>
     </>
   );
 }

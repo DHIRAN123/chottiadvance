@@ -224,7 +224,7 @@ export default function DocumentUploadPage() {
               value={buyerName}
               onChange={(e) => setBuyerName(e.target.value)}
             />
-            <span>Buyer's Name</span>
+            <span>Buyer&apos;s Name</span>
           </div>
 
           <div className="inputBox">
