@@ -4,7 +4,7 @@ const nextConfig = {
   images: {
     unoptimized: true, // Disable Next.js image optimization for static exports
   },
-  trailingSlash: true, // Ensure trailing slashes for routes
+  trailingSlash: false, // Ensure trailing slashes for routes
 
   webpack(config) {
     // Grab the existing rule that handles SVG imports

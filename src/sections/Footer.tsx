@@ -21,6 +21,7 @@ export const Footer = () => {
           {/* <Link href="">Pricing</Link> */}
           <Link href="/terms">Terms</Link>
           <Link href="/help">Help</Link>
+          <Link href="/blogs">Blogs</Link>
         </nav>
         <div className="flex justify-center gap-6 mt-6">
         <a href="https://x.com/Vinnifinni_IN" target="_blank" rel="noopener noreferrer">
@@ -34,7 +35,7 @@ export const Footer = () => {
           {/* <SocialPin /> */}
           {/* <SocialYoutube /> */}
         </div>
-        <p className="mt-6">&copy; 2024 Vinnifinni, Inc. All rights reserved.
+        <p className="mt-6">&copy; 2025 Vinnifinni, Inc. All rights reserved.
           <br /><Link className="hover:text-white transition-all" href="https://github.com/MiladJoodi/Light-Saas-Landing-Page"></Link>
         </p>
       </div>

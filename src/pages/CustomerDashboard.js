@@ -89,7 +89,8 @@ export default function CustomerDashboard() {
     <div style={styles.dashboardContainer}>
       <div style={styles.header}>
         <div style={styles.logoContainer}>
-          <Image src="/path-to-logo.png" alt="Company Logo" style={styles.logo} />
+          {/* <Image src="/path-to-logo.png" alt="Company Logo" style={styles.logo} /> */}
+          <Image src="/path-to-logo.png" alt="Logo" width={100} height={40} />
         </div>
         <div style={styles.profileContainer}>
           <Image src="/path-to-profile-icon.png" alt="Profile" style={styles.profileIcon} />
