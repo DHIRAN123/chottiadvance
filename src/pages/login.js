@@ -1,3 +1,5 @@
+// File: pages/login.js
+
 import { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -7,109 +9,166 @@ export default function LoginPage() {
   const [loginType, setLoginType] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   const [otp, setOtp] = useState('');
   const [orderId, setOrderId] = useState('');
   const [mobileFromApi, setMobileFromApi] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const [nbfcForm, setNbfcForm] = useState({
+    fullName: '', email: '', designation: '', companyName: '', cin: '',
+    panNumber: '', gstin: '', rbiReg: '', address: '', officialEmail: '',
+    accountNumber: '', ifsc: '', bankName: '', mobileNumber: ''
+  });
+
   const router = useRouter();
 
-  // Handle login type selection
   const handleLoginClick = (type) => {
     setLoginType(type);
-    setOtpSent(false);
+    setOtpSent(type !== 'NBFC'); // OTP skipped for NBFC
+    setOtpVerified(type !== 'NBFC'); // OTP verification skipped for NBFC
+    setPhoneNumber('');
+    setOtp('');
+    setNbfcForm({
+      fullName: '', email: '', designation: '', companyName: '', cin: '',
+      panNumber: '', gstin: '', rbiReg: '', address: '', officialEmail: '',
+      accountNumber: '', ifsc: '', bankName: '', mobileNumber: ''
+    });
   };
 
-  // Send OTP function
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    if (!loginType) {
-      alert('Please select a login type.');
-      return;
-    }
-    if (!phoneNumber) {
-      alert('Please enter your phone number.');
-      return;
-    }
+    if (!loginType || !phoneNumber) return alert('Select login type and enter phone number');
     try {
-      const response = await fetch(
-        `http://localhost:8082/sendOtp?mobileNumber=${encodeURIComponent(phoneNumber)}&loginType=${encodeURIComponent(loginType)}`,
-        { method: 'GET' }
-      );
-      console.log("Sending OTP with loginType:", loginType);
-      if (response.ok) {
-        const data = await response.json();
+      setLoading(true);
+      const res = await fetch(`http://localhost:8082/sendOtp?mobileNumber=${phoneNumber}&loginType=${loginType}`);
+      const data = await res.json();
+      if (res.ok) {
         setMobileFromApi(data.mobileNumber || phoneNumber);
         setOrderId(data.orderId);
         setOtpSent(true);
-        alert(data.message || 'OTP sent successfully. Please check your phone.');
-      } else {
-        alert('Failed to send OTP. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error sending OTP:', error);
-      alert('An error occurred. Please try again later.');
+        alert('OTP Sent');
+      } else alert(data.message);
+    } catch (err) {
+      console.error(err);
+      alert('Error sending OTP');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Verify OTP function
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    if (!otp) {
-      alert('Please enter the OTP.');
-      return;
+    try {
+      setLoading(true);
+      const res = await fetch(`http://localhost:8082/verifyOtp?mobileNumber=${mobileFromApi}&otp=${otp}`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.statusCode === 200) {
+        alert('OTP verified');
+        setOtpVerified(true);
+      } else alert(data.message);
+    } catch (err) {
+      console.error(err);
+      alert('Error verifying OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNbfcFinalSubmit = async (e) => {
+    e.preventDefault();
+    for (const key in nbfcForm) {
+      if (!nbfcForm[key]) {
+        alert(`Please fill out ${key}`);
+        return;
+      }
     }
     try {
-      const response = await fetch(
-        `http://localhost:8082/verifyOtp?mobileNumber=${encodeURIComponent(mobileFromApi)}&otp=${encodeURIComponent(otp)}`,
-        { method: 'POST' }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (data.statusCode === 200) {
-          alert('OTP verified successfully!');
-          router.push(`/kyc?uuid=${data.uuid}`);
-        } else {
-          alert(data.message || 'Failed to verify OTP. Please try again.');
-        }
+      setLoading(true);
+
+      const loginRes = await fetch('http://localhost:8080/api/nbfc-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: nbfcForm.fullName,
+          mobileNumber: nbfcForm.mobileNumber,
+          email: nbfcForm.email,
+          designation: nbfcForm.designation,
+          otpVerified: true
+        })
+      });
+
+      const loginData = await loginRes.json();
+      const uuid = loginData.nbfcUuid;
+      if (!uuid) return alert('Something went wrong. UUID not received.');
+
+      const detailRes = await fetch('http://localhost:8080/api/nbfc-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nbfcUuid: uuid,
+          companyName: nbfcForm.companyName,
+          cin: nbfcForm.cin,
+          panNumber: nbfcForm.panNumber,
+          gstin: nbfcForm.gstin,
+          rbiRegistrationNumber: nbfcForm.rbiReg,
+          registeredAddress: nbfcForm.address,
+          officialEmail: nbfcForm.officialEmail
+        })
+      });
+
+      const bankRes = await fetch('http://localhost:8080/api/bank-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nbfcUuid: uuid,
+          accountNumber: nbfcForm.accountNumber,
+          ifscCode: nbfcForm.ifsc,
+          bankName: nbfcForm.bankName,
+          isVerified: false
+        })
+      });
+
+      if (detailRes.ok && bankRes.ok) {
+        router.push(`/dashboard?uuid=${uuid}`);
       } else {
-        alert('Invalid OTP. Please try again.');
+        alert('Error submitting NBFC details');
       }
-    } catch (error) {
-      console.error('Error verifying OTP:', error);
-      alert('An error occurred. Please try again later.');
+    } catch (err) {
+      console.error(err);
+      alert('Something went wrong');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleInput = (e) => {
+    setNbfcForm({ ...nbfcForm, [e.target.name]: e.target.value });
   };
 
   return (
     <>
-      <Head>
-        <title>Login Page</title>
-      </Head>
+      <Head><title>Login</title></Head>
       <div className="box">
         <span className="borderLine"></span>
-        <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp}>
+        <form onSubmit={
+          loginType === 'NBFC'
+            ? handleNbfcFinalSubmit
+            : (otpSent ? handleVerifyOtp : handleSendOtp)
+        }>
           <h2>Login</h2>
           <div className="button-group">
-            <button
-              type="button"
-              className={loginType === 'NBFC' ? 'selectedButton' : ''}
-              onClick={() => handleLoginClick('NBFC')}
-            >
-              Login as NBFC
-            </button>
-            <button
-              type="button"
-              className={loginType === 'Vendor/Corporate' ? 'selectedButton' : ''}
-              onClick={() => handleLoginClick('Vendor/Corporate')}
-            >
-              Login as Vendor/Corporate
-            </button>
+            <button type="button" onClick={() => handleLoginClick('NBFC')}>Login as NBFC</button>
+            <button type="button" onClick={() => handleLoginClick('Vendor/Corporate')}>Login as Vendor/Corporate</button>
           </div>
-          {loginType && (
+
+          {loginType && loginType !== 'NBFC' && (
             <>
               <div className="inputBox">
                 <input
                   type="text"
-                  id="phoneNumber"
                   placeholder="Enter your phone number"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
@@ -118,22 +177,53 @@ export default function LoginPage() {
                 />
                 <span>Phone Number</span>
               </div>
+
               {otpSent && (
                 <div className="inputBox">
                   <input
                     type="text"
-                    id="otp"
                     placeholder="Enter OTP"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
                     required
+                    disabled={otpVerified}
                   />
                   <span>OTP</span>
                 </div>
               )}
-              <input type="submit" id="submit" value={otpSent ? 'Verify OTP' : 'Send OTP'} />
             </>
           )}
+
+          {loginType === 'NBFC' && (
+            <div className="nbfcForm">
+              <input name="fullName" onChange={handleInput} placeholder="Full Name" required />
+              <input name="mobileNumber" onChange={handleInput} placeholder="Mobile Number" required />
+              <input name="email" onChange={handleInput} placeholder="Email" required />
+              <input name="designation" onChange={handleInput} placeholder="Designation" required />
+              <input name="companyName" onChange={handleInput} placeholder="Company Name" required />
+              <input name="cin" onChange={handleInput} placeholder="CIN" required />
+              <input name="panNumber" onChange={handleInput} placeholder="PAN Number" required />
+              <input name="gstin" onChange={handleInput} placeholder="GSTIN" required />
+              <input name="rbiReg" onChange={handleInput} placeholder="RBI Reg No" required />
+              <input name="address" onChange={handleInput} placeholder="Registered Address" required />
+              <input name="officialEmail" onChange={handleInput} placeholder="Official Email" required />
+              <input name="accountNumber" onChange={handleInput} placeholder="Bank Account" required />
+              <input name="ifsc" onChange={handleInput} placeholder="IFSC Code" required />
+              <input name="bankName" onChange={handleInput} placeholder="Bank Name" required />
+            </div>
+          )}
+
+          <input
+            type="submit"
+            disabled={loading}
+            value={
+              loading ? 'Submitting...' : (
+                loginType === 'NBFC'
+                  ? 'Submit NBFC Details'
+                  : (!otpSent ? 'Send OTP' : (otpVerified ? 'Continue' : 'Verify OTP'))
+              )
+            }
+          />
         </form>
       </div>
     </>
